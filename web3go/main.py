@@ -61,7 +61,7 @@ def main():
                     all_goldleaves += Goldleaves
                     file_stat.write(f'{account.address}:{Goldleaves}:{chipNum}:{pieceNum}\n')
                     if idx == count_wallets:
-                        file_stat.write(f'all:{all_goldleaves}:{all_chip}:\n')
+                        file_stat.write(f'all:{all_goldleaves}:{all_chip}\n')
                         file_stat.close()
             except Exception as e:
                 logger.error(f'{idx}/{count_wallets} Failed: {str(e)}')
