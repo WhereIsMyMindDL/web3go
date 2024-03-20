@@ -1,3 +1,5 @@
+import json
+
 INVOLVED_CHAINS = ['Ethereum']
 
 RPC = {
@@ -18,6 +20,7 @@ RPC = {
     'Linea': 'https://1rpc.io/linea',
     'Manta': 'https://1rpc.io/manta',
     'Base': 'https://base.llamarpc.com',
+    'opBNB': 'https://opbnb.publicnode.com',
 }
 
 SCANS = {
@@ -38,6 +41,7 @@ SCANS = {
     'zkfair': 'https://scan.zkfair.io/tx/',
     'Manta': 'https://pacific-explorer.manta.network/tx/',
     'Base': 'https://basescan.org/tx/',
+    'opBNB': 'https://opbnbscan.com/tx/',
 }
 
 CHAIN_IDS = {
@@ -58,6 +62,7 @@ CHAIN_IDS = {
     'zkfair': 42766,
     'Manta': 169,
     'Base': 8453,
+    'opBNB': 204,
 }
 
 CHAIN_NAMES = {
@@ -79,9 +84,10 @@ CHAIN_NAMES = {
     42766: 'zkfair',
     169: 'Manta',
     8453: 'Base',
+    204: 'opBNB',
 }
 
-EIP1559_CHAINS = ['Ethereum', 'Zora', 'Optimism', 'Manta']
+EIP1559_CHAINS = ['Ethereum', 'Zora', 'Optimism', 'Manta', 'opBNB']
 
 NATIVE_TOKEN_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
 
