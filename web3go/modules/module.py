@@ -20,6 +20,9 @@ class module(Account):
         self.proxy = proxy
         if self.proxy != None:
             self.session.proxies.update({'http': f"http://{self.proxy}"})
+        self.chipNum = 0
+        self.pieceNum = 0
+        self.Goldleaves = 0
 
     @retry
     def mint_pass(self):
@@ -192,3 +195,64 @@ class module(Account):
         time.sleep(5)
         response = self.session.get('https://reiki.web3go.xyz/api/profile').json()
         logger.success(f'Успешно прошел 6/6 | Available golds: {response["goldLeafCount"]}')
+
+    @retry
+    def check_stat(self):
+        response = requests.get('https://reiki.web3go.xyz/api/lottery/offchain', headers=self.session.headers).json()
+        self.Goldleaves = response['userGoldLeafCount']
+        self.chipNum = response['chipNum']
+        self.pieceNum = response['pieceNum']
+
+    @retry
+    def open_case(self):
+        self.session.headers.update({
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Connection': 'keep-alive',
+            'Content-Type': 'application/json',
+            'Origin': 'https://web3go.xyz',
+            'Referer': 'https://web3go.xyz/',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
+            'sec-ch-ua': '"Not_A Brand";v="99", "Google Chrome";v="109", "Chromium";v="109"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+        })
+
+        json_data = {
+            'address': '0x',
+        }
+
+        response = self.session.post('https://reiki.web3go.xyz/api/account/web3/web3_nonce', headers=self.session.headers,
+                                 json=json_data).json()
+        nonce = response['nonce']
+
+        output_date = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        msg = f"web3go.xyz wants you to sign in with your Ethereum account:\n{self.address}\n\nSign in to the Web3Go Airdrop.\n\nURI: https://reiki.web3go.xyz\nVersion: 1\nChain ID: 204\nNonce: {nonce}\nIssued At: {output_date}"
+        message = encode_defunct(text=msg)
+        text_signature = self.w3.eth.account.sign_message(message, private_key=self.private_key)
+
+        signature_value = text_signature.signature.hex()
+        json_data = {
+            'address': self.address,
+            'nonce': nonce,
+            'challenge': '{"msg":"' + msg.replace('\n', '\\n') + '"}',
+            'signature': signature_value,
+        }
+
+        response = self.session.post(
+            'https://reiki.web3go.xyz/api/account/web3/web3_challenge',
+            json=json_data,
+        ).json()
+
+        token = response['extra']['token']
+        self.session.headers["Authorization"] = f"Bearer {token}"
+        module.check_stat(self)
+        for i in range(self.Goldleaves // 2000):
+            response = self.session.post('https://reiki.web3go.xyz/api/lottery/try', headers=self.session.headers).json()
+            print(f"prize: {response['prize']}")
+        module.check_stat(self)
+        print(f'Stat: GoldLeafCount={self.Goldleaves} chipNum={self.chipNum} pieceNum={self.pieceNum}')
+        return self.Goldleaves, self.chipNum, self.pieceNum
