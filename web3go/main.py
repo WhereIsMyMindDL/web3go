@@ -9,6 +9,8 @@ from modules.myaccount import Account
 from modules.module import module
 
 day_now = int(datetime.datetime.now(datetime.timezone.utc).strftime("%d"))
+all_chip = 0
+all_goldleaves = 0
 
 def main():
     with open('proxies.txt', 'r') as file:  # login:password@ip:port в файл proxy.txt
@@ -30,9 +32,13 @@ def main():
 
     if shuffle:
         random.shuffle(data)
+    file_stat = open("stat.txt", "w")
+    file_stat.write(f'address:Goldleaves:chipNum:pieceNum\n')
 
     def proccessing():
         global day_now
+        global all_chip
+        global all_goldleaves
         success_wallets = 0
 
         for idx, (wallet, proxy) in enumerate(data, start=1):
@@ -49,6 +55,14 @@ def main():
                     success_wallets += module(account.id, account.private_key, account.proxy, 'BSC').proof_wallet()
                 elif mode == 3:
                     module(account.id, account.private_key, account.proxy, 'BSC').get_quiz()
+                elif mode == 4:
+                    Goldleaves, chipNum, pieceNum = module(account.id, account.private_key, account.proxy, 'opBNB').open_case()
+                    all_chip += chipNum
+                    all_goldleaves += Goldleaves
+                    file_stat.write(f'{account.address}:{Goldleaves}:{chipNum}:{pieceNum}\n')
+                    if idx == count_wallets:
+                        file_stat.write(f'all:{all_goldleaves}:{all_chip}:\n')
+                        file_stat.close()
             except Exception as e:
                 logger.error(f'{idx}/{count_wallets} Failed: {str(e)}')
 
@@ -63,7 +77,7 @@ def main():
             send_list.clear()
 
             if idx != count_wallets:
-                sleeping_between_wallets()
+                # sleeping_between_wallets()
                 print()
         if mode == 2:
             print()
