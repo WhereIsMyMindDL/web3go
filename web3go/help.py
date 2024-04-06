@@ -8,7 +8,7 @@ import random
 from statistics import mean
 
 from vars import EIP1559_CHAINS
-from settings import RETRY_COUNT, delay_wallets
+from settings import RETRY_COUNT, delay_wallets, delay_transactions
 
 
 send_list = []
@@ -39,6 +39,12 @@ def retry(func):
 def sleeping_between_wallets():
     x = random.randint(delay_wallets[0], delay_wallets[1])
     for i in trange(x, desc=f'{Fore.LIGHTBLACK_EX}sleep...', ncols=50, bar_format='{desc}  {n_fmt}/{total_fmt}s |{bar}| {percentage:3.0f}%'):
+        time.sleep(1)
+    print()
+
+def sleeping_between_transactions():
+    x = random.randint(delay_transactions[0], delay_transactions[1])
+    for i in trange(x, desc=f'{Fore.LIGHTBLACK_EX}sleep between transaction...', ncols=65, bar_format='{desc}  {n_fmt}/{total_fmt}s |{bar}| {percentage:3.0f}%'):
         time.sleep(1)
     print()
 
