@@ -9,15 +9,11 @@ import time
 import json
 
 from .myaccount import Account
-from web3go3.help import retry, sign_and_send_transaction, SUCCESS, FAILED, get_tx_data, sleeping_between_transactions
-from web3go3.settings import burn_chip, zkBridge
-from web3go3.modules.zkbridge import zkBridge
-
+from help import retry, sign_and_send_transaction, SUCCESS, FAILED, get_tx_data, sleeping_between_transactions
+from settings import burn_chip, zkBridge
+from modules.zkbridge import zkBridge
 
 send_list = ''
-
-W3GABI = json.loads('[{"type":"constructor","inputs":[{"name":"_logic","type":"address","internalType":"address"},{"name":"admin_","type":"address","internalType":"address"},{"name":"_data","type":"bytes","internalType":"bytes"}],"payable":true,"stateMutability":"payable"},{"name":"AddressEmptyCode","type":"error","inputs":[{"name":"target","type":"address","internalType":"address"}]},{"name":"ERC1967InvalidAdmin","type":"error","inputs":[{"name":"admin","type":"address","internalType":"address"}]},{"name":"ERC1967InvalidImplementation","type":"error","inputs":[{"name":"implementation","type":"address","internalType":"address"}]},{"name":"FailedInnerCall","type":"error","inputs":[]},{"name":"ProxyDeniedAdminAccess","type":"error","inputs":[]},{"name":"ProxyNonPayableFunction","type":"error","inputs":[]},{"type":"fallback","payable":true,"stateMutability":"payable"},{"type":"receive","payable":true,"stateMutability":"payable"}]')
-
 
 class module(Account):
     def __init__(self, id, private_key, proxy, rpc):
@@ -263,7 +259,8 @@ class module(Account):
         module.check_stat(self)
         print(f'Stat: GoldLeafCount={self.Goldleaves} chipNum={self.chipNum} pieceNum={self.pieceNum}')
         return self.Goldleaves, self.chipNum, self.pieceNum
-
+        
+    @retry
     def claim_chip(self):
         global send_list
         send_list = ''
