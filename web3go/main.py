@@ -5,8 +5,8 @@ import datetime
 
 from help import send_message, sleeping_between_wallets, intro, outro, send_list, SUCCESS
 from settings import bot_status, bot_id, bot_token, shuffle, mode
-from modules.myaccount import Account
-from modules.module import module
+from myaccount import Account
+from module import module
 
 day_now = int(datetime.datetime.now(datetime.timezone.utc).strftime("%d"))
 all_chip = 0
@@ -47,6 +47,7 @@ def main():
             account = Account(idx, private_key, proxy, 'BSC')
 
             print(f'{idx}/{count_wallets} : {account.address}\n')
+
             try:
                 if mode == 1:
                     send_list.append(f'{account.id}/{count_wallets} : [{account.address}]({"https://debank.com/profile/" + account.address})')
@@ -61,8 +62,15 @@ def main():
                     all_goldleaves += Goldleaves
                     file_stat.write(f'{account.address}:{Goldleaves}:{chipNum}:{pieceNum}\n')
                     if idx == count_wallets:
-                        file_stat.write(f'all:{all_goldleaves}:{all_chip}\n')
+                        file_stat.write(f'all:{all_goldleaves}:{all_chip}:\n')
                         file_stat.close()
+                    sleeping_between_wallets()
+                elif mode == 5:
+                    send_list.append(f'{account.id}/{count_wallets} : [{account.address}]({"https://debank.com/profile/" + account.address})')
+                    send_list_5, private_key, burn_chip = module(account.id, account.private_key, account.proxy, 'opBNB').claim_chip()
+                    send_list.append(send_list_5)
+                    file_stat.write(f'{private_key}:{burn_chip}\n')
+
             except Exception as e:
                 logger.error(f'{idx}/{count_wallets} Failed: {str(e)}')
 
