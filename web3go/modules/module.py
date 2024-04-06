@@ -361,7 +361,7 @@ class module(Account):
                 response = requests.post('https://opbnb-mainnet-rpc.bnbchain.org/', headers=self.session.headers,
                                          json=json_data).json()
                 if response['result'][-5:] != '00000':
-                    data = '0x42966c6800000000000000000000000000000000000000000000000000000000000' + response['result'][-5:]
+                    data = '0x42966c6800000000000000000000000000000000000000000000000000000000000' + response['result'][-6:]
                     tx_data = get_tx_data(self, to='0xe5116e725a8c1bf322df6f5842b73102f3ef0cee', data=data)
 
                     logger.info(f'Web3Go: Burn Chip')
