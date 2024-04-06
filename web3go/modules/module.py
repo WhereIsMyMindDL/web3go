@@ -1,4 +1,3 @@
-import time
 from loguru import logger
 from pyuseragents import random as random_ua
 from requests import Session
@@ -6,12 +5,16 @@ from datetime import datetime
 from eth_account.messages import encode_defunct
 import requests
 import datetime
+import time
 
 from .myaccount import Account
-from help import retry, sign_and_send_transaction, SUCCESS, FAILED, get_tx_data
+from help import retry, sign_and_send_transaction, SUCCESS, FAILED, get_tx_data, sleeping_between_transactions
+from settings import burn_chip, zkBridge
+from zkbridge import zkBridge
 
 
 send_list = ''
+
 class module(Account):
     def __init__(self, id, private_key, proxy, rpc):
         super().__init__(id=id, private_key=private_key, proxy=proxy, rpc=rpc)
@@ -256,3 +259,123 @@ class module(Account):
         module.check_stat(self)
         print(f'Stat: GoldLeafCount={self.Goldleaves} chipNum={self.chipNum} pieceNum={self.pieceNum}')
         return self.Goldleaves, self.chipNum, self.pieceNum
+
+    def claim_chip(self):
+        global send_list
+        send_list = ''
+        self.session.headers.update({
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Connection': 'keep-alive',
+            'Content-Type': 'application/json',
+            'Origin': 'https://web3go.xyz',
+            'Referer': 'https://web3go.xyz/',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
+            'sec-ch-ua': '"Not_A Brand";v="99", "Google Chrome";v="109", "Chromium";v="109"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+        })
+
+        json_data = {
+            'address': '0x',
+        }
+
+        response = self.session.post('https://reiki.web3go.xyz/api/account/web3/web3_nonce',
+                                     headers=self.session.headers,
+                                     json=json_data).json()
+        nonce = response['nonce']
+
+        output_date = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        msg = f"web3go.xyz wants you to sign in with your Ethereum account:\n{self.address}\n\nSign in to the Web3Go Airdrop.\n\nURI: https://reiki.web3go.xyz\nVersion: 1\nChain ID: 204\nNonce: {nonce}\nIssued At: {output_date}"
+        message = encode_defunct(text=msg)
+        text_signature = self.w3.eth.account.sign_message(message, private_key=self.private_key)
+
+        signature_value = text_signature.signature.hex()
+        json_data = {
+            'address': self.address,
+            'nonce': nonce,
+            'challenge': '{"msg":"' + msg.replace('\n', '\\n') + '"}',
+            'signature': signature_value,
+        }
+
+        response = self.session.post(
+            'https://reiki.web3go.xyz/api/account/web3/web3_challenge',
+            json=json_data,
+        ).json()
+
+        token = response['extra']['token']
+        self.session.headers["Authorization"] = f"Bearer {token}"
+        module.check_stat(self)
+
+
+        if self.chipNum > 0:
+            if zkBridge:
+                send_list += zkBridge.main(self)
+                sleeping_between_transactions()
+
+            json_data = {
+                'addressThis': '0x00a9De8Af37a3179d7213426E78Be7DFb89F2b19',
+                'commodityToken': '0xe5116e725a8c1bF322dF6F5842b73102F3Ef0CeE',
+                'chainId': 204,
+                'type': 'chip',
+            }
+
+            response = requests.post('https://reiki.web3go.xyz/api/lottery/claim', headers=self.session.headers, json=json_data).json()
+            nonce = response['nonce']
+            flatSig = response['signature']
+
+            data = '0xe4f7d554' + '00000000000000000000000000a9de8af37a3179d7213426e78be7dfb89f2b19' + '000000000000000000000000e5116e725a8c1bf322df6f5842b73102f3ef0cee' + f'000000000000000000000000{self.address[2:]}' + '00000000000000000000000000000000000000000000000000000000000000cc' + f'000000000000000000000000000000000000000000000000{nonce[2:]}' + '00000000000000000000000000000000000000000000000000000000000000c0' + '0000000000000000000000000000000000000000000000000000000000000041' + f'{flatSig[2:]}00000000000000000000000000000000000000000000000000000000000000'
+
+            tx_data = get_tx_data(self, to='0x00a9de8af37a3179d7213426e78be7dfb89f2b19', data=data)
+
+            logger.info(f'Web3Go: Minted Chip')
+            txstatus, tx_hash = sign_and_send_transaction(self, tx_data)
+
+            if txstatus == 1:
+                logger.success(f'Web3Go: Minted Chip : {self.scan + tx_hash}')
+                send_list += (f'\n{SUCCESS}Web3Go: Minted Chip - [tx hash]({self.scan + tx_hash})')
+                sleeping_between_transactions()
+
+            else:
+                logger.error(f'Web3Go: Minted Chip : {self.scan + tx_hash}')
+                send_list += (f'\n{FAILED}Web3Go: Minted Chip - [tx hash]({self.scan + tx_hash})')
+
+            if burn_chip:
+                json_data = {
+                    'jsonrpc': '2.0',
+                    'id': 12,
+                    'method': 'eth_call',
+                    'params': [
+                        {
+                            'from': '0x0000000000000000000000000000000000000000',
+                            'data': f'0xfb570bbf000000000000000000000000{self.address[2:]}',
+                            'to': '0xe5116e725a8c1bf322df6f5842b73102f3ef0cee',
+                        },
+                        'latest',
+                    ],
+                }
+
+                response = requests.post('https://opbnb-mainnet-rpc.bnbchain.org/', headers=self.session.headers,
+                                         json=json_data).json()
+                if response['result'][-5:] != '00000':
+                    data = '0x42966c6800000000000000000000000000000000000000000000000000000000000' + response['result'][-5:]
+                    tx_data = get_tx_data(self, to='0xe5116e725a8c1bf322df6f5842b73102f3ef0cee', data=data)
+
+                    logger.info(f'Web3Go: Burn Chip')
+                    txstatus, tx_hash = sign_and_send_transaction(self, tx_data)
+
+                    if txstatus == 1:
+                        logger.success(f'Web3Go: Burn Chip : {self.scan + tx_hash}')
+                        send_list += (f'\n{SUCCESS}Web3Go: Burn Chip - [tx hash]({self.scan + tx_hash})')
+                        return send_list, self.private_key, 1
+
+                    else:
+                        logger.error(f'Web3Go: Burn Chip : {self.scan + tx_hash}')
+                        send_list += (f'\n{FAILED}Web3Go: Burn Chip - [tx hash]({self.scan + tx_hash})')
+                        return send_list, self.private_key, 0
+                else:
+                    logger.info(f'Web3Go: Не нашел нфт...')
+                    return send_list, self.private_key, 0
